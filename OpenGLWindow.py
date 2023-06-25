@@ -163,6 +163,19 @@ class OpenGLWindow:
         return cls.__get_manager().is_alive()
 
         
+    @property
+    @classmethod
+    def terminated(cls):
+        return cls.__get_manager().terminated
+    
+    
+    @classmethod
+    def terminate(cls):
+        print(f'terminate {glutGetWindow()}')
+        cls.__get_manager().terminate()
+        glutLeaveMainLoop()
+        
+        
     class Manager:
         @classmethod
         def get_instance(cls):
@@ -315,18 +328,6 @@ class OpenGLWindow:
         glClearColor(0.7, 0.7, 0.7, 0.7)
         
         
-    @property
-    def terminated(self):
-        return self.__terminated
-    
-    
-    def terminate(self):
-        self.__terminated = True
-        print(f'terminate {glutGetWindow()}')
-        self.__get_manager().terminate()
-        glutLeaveMainLoop()
-    
-    
     def __pre_close_def(self, win):
         return False
     
@@ -455,13 +456,24 @@ class OpenGLWindow:
         GLUT_STEREO	ステレオ・ウィンドウビットマスク
         """
         
+        def wrapper(f):
+            def _wrapper(*args, **kwargs):
+                try:
+                    return f(*args, **kwargs)
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    self.terminate()
+            return _wrapper
+                
+        
         self.__winid = glutCreateWindow(self.__title)
         self.__hWnd = win32gui.WindowFromDC(wglGetCurrentDC())
-        glutDisplayFunc(self.__display)
-        glutReshapeFunc(self.__reshape)
-        glutKeyboardFunc(self.__keyboard)
-        glutMouseFunc(self.__mouse)
-        glutCloseFunc(self.__close)
+        glutDisplayFunc(wrapper(self.__display))
+        glutReshapeFunc(wrapper(self.__reshape))
+        glutKeyboardFunc(wrapper(self.__keyboard))
+        glutMouseFunc(wrapper(self.__mouse))
+        glutCloseFunc(wrapper(self.__close))
         self.__get_manager().append(self)
         self.__init()
         
